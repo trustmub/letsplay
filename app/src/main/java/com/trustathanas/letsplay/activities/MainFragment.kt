@@ -45,7 +45,7 @@ class MainFragment : BaseFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_main, container, false)
-        this.initializeTiltViewModel(view)
+//        this.initializeTiltViewModel(view)
 
         view.tv_direction.visibility = View.GONE
         view.tv_show_xy.visibility = View.GONE
@@ -69,7 +69,7 @@ class MainFragment : BaseFragment() {
 
             if (initialCount > 4) {
 //                countdownService.shutdown()
-
+                initializeTiltViewModel(view)
                 initialiseArrowValue()
                 generateRandomSeconds()
                 startGame(null)
@@ -125,14 +125,15 @@ class MainFragment : BaseFragment() {
                 tv_direction.text = "Forward"
                 sendEvent("Forward")
             }
-            if (y > 4.00) tv_direction.text = "Back"
+            if (y > 4.00) {
+                tv_direction.text = "Back"
+                sendEvent("Back")
+            }
         })
     }
 
 
     private fun sendEvent(data: String) {
-        println("Event: $data")
-        println("Event arrowValue: $arrowValue")
         if (data == arrowValue) setScoreFor("Passed") else setScoreFor("Failed")
 
         socket?.let {
@@ -142,6 +143,8 @@ class MainFragment : BaseFragment() {
 
     private fun setScoreFor(result: String) {
         totalScoreA += if (result == "Passed") 1 else 0
+        tv_a_score.text = totalScoreA.toString()
+        tv_arrow_value.text = "-"
         initialiseArrowValue()
         generateRandomSeconds()
         startGame(null)
@@ -179,7 +182,9 @@ class MainFragment : BaseFragment() {
     private fun initialiseArrowValue(): String {
         // random arrow value
         //random global arrow value
-        arrowValue = "Left"
+        tv_arrow_value.text = "-"
+        val directionList = listOf<String>("Left","Right","Back", "Forward")
+        arrowValue = directionList.random()
         return arrowValue
 
     }

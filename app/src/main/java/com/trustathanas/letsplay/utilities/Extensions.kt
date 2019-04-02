@@ -12,3 +12,5 @@ fun Float.roundByTwoDecimals(): Double {
 fun String.convertsToPercentage(): Int {
     return (this.toDouble() * 100).toInt()
 }
+
+fun <E> List<E>.random(random: java.util.Random): E? = if (size > 0) get(random.nextInt(size)) else null

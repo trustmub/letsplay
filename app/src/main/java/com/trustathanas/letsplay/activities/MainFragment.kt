@@ -68,7 +68,7 @@ class MainFragment : BaseFragment() {
             initialCount += it
 
             if (initialCount > 4) {
-                countdownService.shutdown()
+//                countdownService.shutdown()
 
                 initialiseArrowValue()
                 generateRandomSeconds()
@@ -87,7 +87,7 @@ class MainFragment : BaseFragment() {
                 // display the arrow
                 view.tv_arrow_value.text = arrowValue
                 // set the arrow value
-                gameService.shutdown()
+//                gameService.shutdown()
             }
         })
 

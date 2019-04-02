@@ -13,208 +13,170 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Observer
+import com.skyfishjy.library.RippleBackground
 import com.trustathanas.letsplay.R
 import com.trustathanas.letsplay.activities.common.BaseFragment
+import com.trustathanas.letsplay.models.ConnectionModel
+import com.trustathanas.letsplay.utilities.EXTRA_CONNECTION_DETAILS
+import com.trustathanas.letsplay.utilities.SERVICE_TYPE
 import com.trustathanas.letsplay.utilities.dialogs.DialogUtils
+import com.trustathanas.letsplay.viewModels.PairViewModel
 import kotlinx.android.synthetic.main.fragment_pair.*
 import kotlinx.android.synthetic.main.fragment_pair.view.*
-import java.net.ServerSocket
+import org.koin.android.viewmodel.ext.android.viewModel
 
 
 class PairFragment : BaseFragment() {
-    val SERVICE_TYPE = "_http._tcp."
-    val SERVICE_NAME = "Trust's Phone"
-    lateinit var nsdManager: NsdManager
-    lateinit var serverSocket: ServerSocket
+
+    private val pairViewModel: PairViewModel by viewModel()
+    var discoveredServices: ArrayList<NsdServiceInfo> = ArrayList()
+    lateinit var discoveryListener: NsdManager.DiscoveryListener
     lateinit var registrationListener: NsdManager.RegistrationListener
-    lateinit var discovertListener: NsdManager.DiscoveryListener
+
+    lateinit var nsdManager: NsdManager
+
     lateinit var resolveListener: NsdManager.ResolveListener
-    var discoveredServices: ArrayList<NsdServiceInfo> = arrayListOf()
-    lateinit var serviceName: String
-    var localPort: Int = 0
+    lateinit var serviceInfoExtra: NsdServiceInfo
 
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_pair, container, false)
+
+        view.img_discovered_device_1.visibility = View.GONE
+        view.tv_guest_name.visibility = View.GONE
+        discoveryListener = pairViewModel.getDiscoveryListener()
+        registrationListener = pairViewModel.getRegistrationListener()
+
+        view.img_discovered_device_1.setOnClickListener {
+            nsdManager.resolveService(serviceInfoExtra, resolveListener)
+//            val deviceIntent = Intent(activity!!, MainActivity::class.java)
+//            deviceIntent.putExtra(SERVICE_INFO_EXTRA, NsdServiceIInfoParcelable(serviceInfoExtra))
+//            startActivity(deviceIntent)
+        }
+
+        val rippleBackground = view.findViewById(R.id.content) as RippleBackground
+        initialiseListenerStateObservers(rippleBackground)
+
+        /**
+         * check if device has required permision before initialising NsdManager
+         */
         if (checkForPermission()) {
-            initializeServerSocket()
-            initializeRegistrationListener()
             registerService()
-
-            initializeDiscoveryListener()
-            discoverService()
-
+            initializeDiscoveryService()
+            initialiseResolveListener()
         } else {
             requestPermission()
         }
 
+        pairViewModel.getElementToRemove().observe(this, Observer {
+            discoveredServices.remove(it.element)
+            activity!!.runOnUiThread {
+                img_discovered_device_1.visibility = View.GONE
+                tv_guest_name.visibility = View.GONE
+            }
+        })
+
+        initialiseDiscoveryServicesObserver()
 
         view.btn_show_dialog.setOnClickListener {
             showDialog()
         }
+
+
         return view
     }
 
+    /**
+     * This method initialises an observer which subscribes to an array of NsdService?Info.
+     *
+     */
+    private fun initialiseDiscoveryServicesObserver() {
+        pairViewModel.getDiscoveredServices()?.observe(this, Observer {
+            it.forEach {
+                println("NSD: discovered : ${it.serviceName}")
+                discoveredServices.add(it)
+                activity!!.runOnUiThread {
+                    img_discovered_device_1.visibility = View.VISIBLE
+                    tv_guest_name.visibility = View.VISIBLE
+                    tv_guest_name.text = it.serviceName
+                    serviceInfoExtra = it
+                }
+            }
+        })
+    }
 
     /**
-     * initialise a server socket on the next available port
+     * This method initialises the state observers for registration and discovery listeners to determine of the
+     * listeners started successfully or not.
+     * if there is a failed start up, a dialog alert to start the game in single player mode is presented
      */
-    private fun initializeServerSocket() {
-        serverSocket = ServerSocket(0)
-        localPort = serverSocket.localPort
+    private fun initialiseListenerStateObservers(rippleBackground: RippleBackground) {
+        pairViewModel.getRegistrationState().observe(this, Observer {
+            if (it) {
+                tv_search_devices.text = getString(R.string.service_started)
+                rippleBackground.startRippleAnimation()
+            } else {
+                showDialogForSinglePlayer(
+                    getString(R.string.title_failed),
+                    getString(R.string.message_registration_failed)
+                )
+            }
+        })
+
+        pairViewModel.getDiscoveryState().observe(this, Observer {
+            if (!it) {
+                showDialogForSinglePlayer(
+                    getString(R.string.title_failed),
+                    getString(R.string.message_discovery_failed)
+                )
+            }
+        })
     }
 
     /**
      * register service on local network
      */
     private fun registerService() {
-        val serviceInfo: NsdServiceInfo = NsdServiceInfo()
-        serviceInfo.serviceName = SERVICE_NAME
-        serviceInfo.serviceType = SERVICE_TYPE
-        serviceInfo.port = localPort
-        println("NSD: ServiceName: ${serviceInfo.serviceName}")
-        println("NSD: LocalPort: ${localPort}")
-        println("NSD: Registration Listener: ${registrationListener}")
-
+        val serviceInfo = pairViewModel.getServiceInfoForLocalNet()
         nsdManager = activity!!.getSystemService(Context.NSD_SERVICE) as NsdManager
-
         nsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener)
     }
 
-    private fun initializeRegistrationListener() {
-
-        registrationListener = object : NsdManager.RegistrationListener {
-            override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo?, errorCode: Int) {
-                println("NSD: onUnregistrationFailed ${serviceInfo} Error: $errorCode")
-
-            }
-
-            override fun onServiceUnregistered(serviceInfo: NsdServiceInfo?) {
-                println("NSD: onServiceUnregistered ${serviceInfo} ")
-
-            }
-
-            override fun onRegistrationFailed(serviceInfo: NsdServiceInfo?, errorCode: Int) {
-                println("NSD: onRegistrationFailed ${serviceInfo} Error: $errorCode")
-
-            }
-
-            override fun onServiceRegistered(serviceInfo: NsdServiceInfo?) {
-                println("NSD: onServiceRegistered ${serviceInfo}")
-
-                discoveredServices?.let {
-                    it.forEach {
-                        println("NSD: Discovered items : ${it.host}")
-                    }
-                }
-
-                activity!!.runOnUiThread(Runnable {
-                    tv_search_devices.text = "Service Started"
-                })
-
-                serviceInfo?.let {
-                    serviceName = it.serviceName
-                }
-            }
-
-        }
+    /**
+     * initialise the network service discovery service
+     */
+    private fun initializeDiscoveryService() {
+        nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
     }
-
-    private fun discoverService() {
-        nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discovertListener)
-    }
-
-    private fun initializeDiscoveryListener() {
-        discovertListener = object : NsdManager.DiscoveryListener {
-
-            override fun onServiceFound(serviceInfo: NsdServiceInfo?) {
-                serviceInfo?.let { service ->
-                    if (!service.serviceType.equals(SERVICE_TYPE)) {
-                        println("NSD: Unknown Service Type")
-                    } else if (service.serviceName.equals(SERVICE_NAME)) {
-                        println("NSD: Same machine")
-                        activity!!.runOnUiThread {
-                            tv_search_devices.text = "Same machine: ${service.serviceName}"
-                        }
-                    } else {
-                        println("NSD: service added: $service")
-                        activity!!.runOnUiThread {
-                            tv_search_devices.text = "Other ${service.serviceName}"
-                        }
-
-                        discoveredServices.add(service)
-                    }
-                }
-            }
-
-            override fun onStopDiscoveryFailed(serviceType: String?, errorCode: Int) {
-                println("NSD: Discovery Failed ${errorCode}")
-            }
-
-            override fun onStartDiscoveryFailed(serviceType: String?, errorCode: Int) {
-                println("NSD: onStartDiscoveryFailed ErrorCode: ${errorCode}, Service Type ${serviceType}")
-
-                DialogUtils.createAlertDialogWithTwoButtons(activity!!,
-                    "Failed",
-                    "Discovery Failed for Service Type ${serviceType} with error code : $errorCode",
-                    "Continue",
-                    DialogInterface.OnClickListener { dialog, which ->
-                        startActivity(Intent(activity!!, MainActivity::class.java))
-                    },
-                    "Cancel",
-                    DialogInterface.OnClickListener { dialog, which ->
-                        try {
-                            nsdManager.stopServiceDiscovery(discovertListener)
-                            nsdManager.unregisterService(registrationListener)
-                        } catch (e: IllegalArgumentException) {
-                            println("NSD: Exception Error: $e")
-                        }
-                        dialog.dismiss()
-                    }).show()
-            }
-
-            override fun onDiscoveryStarted(serviceType: String?) {
-                println("NSD: onDiscoveryStarted ${serviceType}")
-                activity!!.runOnUiThread {
-                    tv_search_devices.text = "Discovery Started"
-                }
-            }
-
-            override fun onDiscoveryStopped(serviceType: String?) {
-                println("NSD: onDiscoveryStopped ${serviceType}")
-            }
-
-            override fun onServiceLost(serviceInfo: NsdServiceInfo?) {
-                discoveredServices.remove(serviceInfo)
-                println("NSD: onDiscoveryStarted ${serviceInfo}")
-            }
-
-        }
-    }
-
 
     private fun initialiseResolveListener() {
         resolveListener = object : NsdManager.ResolveListener {
-            override fun onResolveFailed(serviceInfo: NsdServiceInfo?, errorCode: Int) {
 
+            override fun onResolveFailed(serviceInfo: NsdServiceInfo?, errorCode: Int) {
             }
 
             override fun onServiceResolved(serviceInfo: NsdServiceInfo?) {
+                println("NSD: Resolved service: ${serviceInfo}")
+                val cinnectionDetails: ConnectionModel =
+                    ConnectionModel(serviceInfo!!.host!!.hostAddress, serviceInfo!!.port)
+
                 DialogUtils.createAlertDialogWithTwoButtons(activity!!,
                     "All Set",
-                    "Click Continue to play with ${serviceInfo?.host?.hostName}",
+                    "Click Continue to play with ${serviceInfo?.host?.hostName} port: ${serviceInfo?.port}",
                     "Continue",
                     DialogInterface.OnClickListener { dialog, which ->
-                        startActivity(Intent(activity!!, MainActivity::class.java))
+                        val intent = Intent(activity!!, MainActivity::class.java)
+                        intent.putExtra(EXTRA_CONNECTION_DETAILS, cinnectionDetails)
+                        startActivity(intent)
                     },
                     "Cancel",
                     DialogInterface.OnClickListener { dialog, which ->
-                        nsdManager.stopServiceDiscovery(discovertListener)
+                        nsdManager.stopServiceDiscovery(discoveryListener)
                         nsdManager.unregisterService(registrationListener)
                         dialog.dismiss()
                     }).show()
             }
-
         }
     }
 
@@ -231,26 +193,21 @@ class PairFragment : BaseFragment() {
     }
 
     private fun checkForPermission(): Boolean {
-        val externalStorage = ContextCompat.checkSelfPermission(
-            activity!!.applicationContext,
-            Manifest.permission.INTERNET
-        )
-        val cameraPermission =
+        val internet = ContextCompat.checkSelfPermission(activity!!.applicationContext, Manifest.permission.INTERNET)
+        val accessNetworkSate =
             ContextCompat.checkSelfPermission(activity!!.applicationContext, Manifest.permission.ACCESS_NETWORK_STATE)
-        val wifi_multicast = ContextCompat.checkSelfPermission(
-            activity!!.applicationContext,
-            Manifest.permission.CHANGE_WIFI_MULTICAST_STATE
+        val multicastState = ContextCompat.checkSelfPermission(
+            activity!!.applicationContext, Manifest.permission.CHANGE_WIFI_MULTICAST_STATE
         )
 
-        return externalStorage == PackageManager.PERMISSION_GRANTED && cameraPermission == PackageManager.PERMISSION_GRANTED && wifi_multicast == PackageManager.PERMISSION_GRANTED
+        return internet == PackageManager.PERMISSION_GRANTED && accessNetworkSate == PackageManager.PERMISSION_GRANTED && multicastState == PackageManager.PERMISSION_GRANTED
     }
-
 
     private fun showDialog() {
         DialogUtils.createAlertDialogWithTwoButtons(
             activity!!,
-            "Ooops",
-            "Seems there is no device to Pair.Click Try to search again or Continue to Single player Mode",
+            "Client/Single Payer",
+            "Click Continue for single player Mode or connect to Host.Click Try to search again or Continue to Single player Mode",
             "Continue",
             DialogInterface.OnClickListener { _, _ ->
                 startActivity(Intent(activity, MainActivity::class.java))
@@ -262,9 +219,38 @@ class PairFragment : BaseFragment() {
         ).show()
     }
 
+    /**
+     * Dialog method to present a single player option
+     *
+     * @param title
+     * @param message
+     */
+    private fun showDialogForSinglePlayer(title: String, message: String) {
+        DialogUtils.createAlertDialogWithTwoButtons(activity!!,
+            title,
+            message,
+            "Continue",
+            DialogInterface.OnClickListener { dialog, which ->
+                startActivity(Intent(activity!!, MainActivity::class.java))
+            },
+            "Cancel",
+            DialogInterface.OnClickListener { dialog, which ->
+                try {
+                    nsdManager.stopServiceDiscovery(discoveryListener)
+                    nsdManager.unregisterService(registrationListener)
+                } catch (e: IllegalArgumentException) {
+                    println("NSD: Exception Error: $e")
+                }
+                registerService()
+                initializeDiscoveryService()
+
+                dialog.dismiss()
+            }).show()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        nsdManager.stopServiceDiscovery(discovertListener)
+        nsdManager.stopServiceDiscovery(discoveryListener)
         nsdManager.unregisterService(registrationListener)
     }
 }

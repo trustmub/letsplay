@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">LetsPlay</string>
+    <string name="service_started">Service Started</string>
+    <string name="message_discovery_failed">Discovery Failed for Service. Click Continue for single player</string>
+    <string name="message_registration_failed">Could not start network services. Click Continue for single player
+    </string>
+    <string name="title_failed">Failed</string>
+    <string name="single_player">Single Player</string>
 </resources>

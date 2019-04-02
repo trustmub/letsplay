@@ -1,9 +1,9 @@
 package com.trustathanas.letsplay
 
 import android.app.Application
-import android.content.Context
-import android.hardware.SensorManager
+import com.trustathanas.letsplay.repositories.PairRepository
 import com.trustathanas.letsplay.repositories.TiltRepository
+import com.trustathanas.letsplay.viewModels.PairViewModel
 import com.trustathanas.letsplay.viewModels.TiltViewModel
 import org.koin.android.ext.android.startKoin
 import org.koin.android.viewmodel.ext.koin.viewModel
@@ -23,10 +23,12 @@ class LetsPlayApp : Application() {
     }
 
     private val viewModelModule = module {
+        viewModel { PairViewModel(get()) }
         viewModel { TiltViewModel(get()) }
     }
 
     private val repositoryModule = module {
+        single { PairRepository() }
         single { TiltRepository(get("context"), get()) }
     }
 

@@ -5,11 +5,14 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.trustathanas.letsplay.models.AccelerometerModel
 import java.util.concurrent.ExecutorService
 
+@RequiresApi(Build.VERSION_CODES.O)
 class TiltRepository(
     private val context: Context,
     private val executorService: ExecutorService
@@ -22,7 +25,7 @@ class TiltRepository(
     private var accelerometerValues: MutableLiveData<AccelerometerModel>
 
     init {
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER_UNCALIBRATED)
 
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
         accelerometerValues = MutableLiveData()
@@ -37,7 +40,7 @@ class TiltRepository(
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
-        if (event != null) {
+        event?.let {
             executorService.execute {
                 accelerometerValues.postValue(AccelerometerModel(event.values[0], event.values[1]))
             }

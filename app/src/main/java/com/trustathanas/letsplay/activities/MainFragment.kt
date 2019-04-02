@@ -49,6 +49,12 @@ class MainFragment : BaseFragment() {
 
         view.tv_direction.visibility = View.GONE
         view.tv_show_xy.visibility = View.GONE
+        view.btn_restart_game.visibility = View.GONE
+
+        view.btn_restart_game.setOnClickListener {
+            resetGame()
+            it.visibility = View.GONE
+        }
 
         connectionValues = activity!!.intent.getParcelableExtra(EXTRA_CONNECTION_DETAILS)
         connectionValues?.let {
@@ -57,53 +63,56 @@ class MainFragment : BaseFragment() {
             initialiseSocketListener()
         }
 
-        startCountDown(null)
+        startCountDown()
 
         socket?.on("event") {
             println("Event: $it")
         }
 
-        countDown.observe(this, Observer {
-            view.tv_counter.text = initialCount.toString()
-            initialCount += it
-
-            if (initialCount > 4) {
-//                countdownService.shutdown()
-                initializeTiltViewModel(view)
-                initialiseArrowValue()
-                generateRandomSeconds()
-                startGame(null)
-
-                view.tv_counter.visibility = View.GONE
-                view.tv_direction.visibility = View.VISIBLE
-                view.tv_show_xy.visibility = View.VISIBLE
-            }
-        })
-
-        startGameObserver.observe(this, Observer {
-            println("Event randomInterval: $randomArrowInterval")
-            println("Event It: $it")
-            if (it == randomArrowInterval) {
-                // display the arrow
-                view.tv_arrow_value.text = arrowValue
-                // set the arrow value
-//                gameService.shutdown()
-            }
-        })
+        initialiseGameObservers()
 
         return view
     }
 
-    private fun startCountDown(count: Int?) {
+    private fun initialiseGameObservers() {
+//        btn_restart_game.visibility = View.GONE
+
+        countDown.observe(this, Observer {
+            tv_counter.text = initialCount.toString()
+            initialCount += it
+
+            if (initialCount > 4) {
+
+                initializeTiltViewModel()
+                initialiseArrowValue()
+                generateRandomSeconds()
+                startGame()
+
+                tv_counter.visibility = View.GONE
+                tv_direction.visibility = View.VISIBLE
+                tv_show_xy.visibility = View.VISIBLE
+            }
+        })
+
+        startGameObserver.observe(this, Observer {
+            if (it == randomArrowInterval) {
+                // display the arrow
+                tv_arrow_value.text = arrowValue
+                // set the arrow value
+                //                gameService.shutdown()
+            }
+        })
+    }
+
+    private fun startCountDown() {
         val runnable = Runnable { countDown.postValue(1) }
         countdownService.scheduleAtFixedRate(runnable, 0, 1, TimeUnit.SECONDS)
     }
 
-
     @SuppressLint("SetTextI18n")
-    private fun initializeTiltViewModel(view: View) {
+    private fun initializeTiltViewModel() {
         tiltViewModel.getAccelerometerData().observe(this, Observer {
-            view.tv_show_xy.text = "x : ${it.x.roundByTwoDecimals()} y : ${it.y.roundByTwoDecimals()}"
+            tv_show_xy.text = "x : ${it.x.roundByTwoDecimals()} y : ${it.y.roundByTwoDecimals()}"
 
             val x = it.x.roundByTwoDecimals()
             val y = it.y.roundByTwoDecimals()
@@ -132,7 +141,6 @@ class MainFragment : BaseFragment() {
         })
     }
 
-
     private fun sendEvent(data: String) {
         if (data == arrowValue) setScoreFor("Passed") else setScoreFor("Failed")
 
@@ -144,10 +152,16 @@ class MainFragment : BaseFragment() {
     private fun setScoreFor(result: String) {
         totalScoreA += if (result == "Passed") 1 else 0
         tv_a_score.text = totalScoreA.toString()
-        tv_arrow_value.text = "-"
-        initialiseArrowValue()
-        generateRandomSeconds()
-        startGame(null)
+        if (totalScoreA == 10) {
+            stopTiltObserver()
+            btn_restart_game.visibility = View.VISIBLE
+        } else {
+            tv_arrow_value.text = "-"
+            initialiseArrowValue()
+            generateRandomSeconds()
+            startGame()
+        }
+
     }
 
     private fun initialiseSocketListener() {
@@ -164,13 +178,12 @@ class MainFragment : BaseFragment() {
         socket?.connect()
     }
 
-
     override fun onDestroy() {
         super.onDestroy()
         socket?.disconnect()
     }
 
-    private fun startGame(count: Int?) {
+    private fun startGame() {
         var internalCounter = 0
         val runnable = Runnable {
             internalCounter += 1
@@ -183,7 +196,7 @@ class MainFragment : BaseFragment() {
         // random arrow value
         //random global arrow value
         tv_arrow_value.text = "-"
-        val directionList = listOf<String>("Left","Right","Back", "Forward")
+        val directionList = listOf<String>("Left", "Right", "Back", "Forward")
         arrowValue = directionList.random()
         return arrowValue
 
@@ -192,10 +205,19 @@ class MainFragment : BaseFragment() {
     private fun generateRandomSeconds() {
         val randInt = Random.nextInt(2..8)
         randomArrowInterval = randInt
+    }
 
-        println("NextInt: $randInt")
-        val directionList = listOf<String>("Left", "Right", "Forward", "Back")
-        val timer: Timer = Timer(true)
+    private fun stopTiltObserver() {
+        startGameObserver.removeObservers(this)
+        countDown.removeObservers(this)
+        tiltViewModel.getAccelerometerData().removeObservers(this)
+    }
 
+    private fun resetGame() {
+        totalScoreA = 0
+        tv_a_score.text = totalScoreA.toString()
+        totalScoreb = 0
+        tv_b_score.text = totalScoreb.toString()
+        initialiseGameObservers()
     }
 }

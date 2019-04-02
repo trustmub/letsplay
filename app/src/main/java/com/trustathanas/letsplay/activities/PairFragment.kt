@@ -135,7 +135,7 @@ class PairFragment : BaseFragment() {
     }
 
     /**
-     * register service on local network
+     * register countdownService on local network
      */
     private fun registerService() {
         val serviceInfo = pairViewModel.getServiceInfoForLocalNet()
@@ -144,7 +144,7 @@ class PairFragment : BaseFragment() {
     }
 
     /**
-     * initialise the network service discovery service
+     * initialise the network countdownService discovery countdownService
      */
     private fun initializeDiscoveryService() {
         nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
@@ -157,7 +157,7 @@ class PairFragment : BaseFragment() {
             }
 
             override fun onServiceResolved(serviceInfo: NsdServiceInfo?) {
-                println("NSD: Resolved service: ${serviceInfo}")
+                println("NSD: Resolved countdownService: ${serviceInfo}")
                 val cinnectionDetails: ConnectionModel =
                     ConnectionModel(serviceInfo!!.host!!.hostAddress, serviceInfo!!.port)
 

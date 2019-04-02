@@ -22,6 +22,8 @@ import org.koin.android.viewmodel.ext.android.viewModel
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.random.Random
+import kotlin.random.nextInt
 
 
 class MainFragment : BaseFragment() {
@@ -31,9 +33,13 @@ class MainFragment : BaseFragment() {
     var connectionValues: ConnectionModel? = null
     var socket: Socket? = null
     val countDown: MutableLiveData<Int> = MutableLiveData()
-    val service = Executors.newSingleThreadScheduledExecutor()
+    val countdownService = Executors.newSingleThreadScheduledExecutor()
+    val gameService = Executors.newSingleThreadScheduledExecutor()
     var initialCount = 0
-//    val socket =  IO.socket
+
+    var randomArrowInterval = 0
+    val startGameObserver: MutableLiveData<Int> = MutableLiveData()
+    lateinit var arrowValue: String
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_main, container, false)
@@ -57,13 +63,30 @@ class MainFragment : BaseFragment() {
 
         countDown.observe(this, Observer {
             view.tv_counter.text = initialCount.toString()
+//            displayInRandomSeconds()
             initialCount += it
 
             if (initialCount > 4) {
-                service.shutdown()
+                countdownService.shutdown()
+
+                initialiseArrowValue()
+                generateRandomSeconds()
+                startGame(null)
+
                 view.tv_counter.visibility = View.GONE
                 view.tv_direction.visibility = View.VISIBLE
                 view.tv_show_xy.visibility = View.VISIBLE
+            }
+        })
+
+        startGameObserver.observe(this, Observer {
+            println("Event randomInterval: $randomArrowInterval")
+            println("Event It: $it")
+            if (it == randomArrowInterval) {
+                // display the arrow
+                view.tv_arrow_value.text = arrowValue
+                // set the arrow value
+                gameService.shutdown()
             }
         })
 
@@ -71,10 +94,8 @@ class MainFragment : BaseFragment() {
     }
 
     private fun startCountDown(count: Int?) {
-        val runnable = Runnable {
-            countDown.postValue(1)
-        }
-        service.scheduleAtFixedRate(runnable, 0, 1, TimeUnit.SECONDS)
+        val runnable = Runnable { countDown.postValue(1) }
+        countdownService.scheduleAtFixedRate(runnable, 0, 1, TimeUnit.SECONDS)
     }
 
 
@@ -88,7 +109,6 @@ class MainFragment : BaseFragment() {
 
             if (x in -4.0..4.0 && y in -4.0..4.0) {
                 tv_direction.text = "Neutral"
-                sendEvent("Neutral")
             }
 
             if (x > 4.0) {
@@ -110,6 +130,10 @@ class MainFragment : BaseFragment() {
 
 
     private fun sendEvent(data: String) {
+        println("Event: $data")
+        println("Event arrowValue: $arrowValue")
+        tv_show_xy.text = if (data == arrowValue) "passed" else "Failed"
+
         socket?.let {
             it.emit("event", data)
         }
@@ -135,13 +159,30 @@ class MainFragment : BaseFragment() {
         socket?.disconnect()
     }
 
-    private fun displayInRandomSeconds() {
+    private fun startGame(count: Int?) {
+        var internalCounter = 0
+        val runnable = Runnable {
+            internalCounter += 1
+            startGameObserver.postValue(internalCounter)
+        }
+        gameService.scheduleAtFixedRate(runnable, 0, 1, TimeUnit.SECONDS)
+    }
+
+    private fun initialiseArrowValue(): String {
+        // random arrow value
+        //random global arrow value
+        arrowValue = "Left"
+        return arrowValue
+
+    }
+
+    private fun generateRandomSeconds() {
+        val randInt = Random.nextInt(2..8)
+        randomArrowInterval = randInt
+
+        println("NextInt: $randInt")
         val directionList = listOf<String>("Left", "Right", "Forward", "Back")
         val timer: Timer = Timer(true)
-//        timer.schedule(object : TimerTask() {
-//            override fun run() {
-//            }
-//        }, 2000..10000)
 
     }
 }

@@ -31,7 +31,7 @@ class PairViewModel(private val repository: PairRepository) : ViewModel() {
 
 
     /**
-     * register service on local network
+     * register countdownService on local network
      */
     private fun registerService(): NsdServiceInfo {
         val serviceInfo: NsdServiceInfo = NsdServiceInfo()

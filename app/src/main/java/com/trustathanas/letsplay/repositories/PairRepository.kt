@@ -55,7 +55,7 @@ class PairRepository {
 
 
     /**
-     * initialisation of the Netowk service Discovery Registration listener
+     * initialisation of the Netowk countdownService Discovery Registration listener
      */
     private fun initializeRegistrationListener() {
 
@@ -84,7 +84,7 @@ class PairRepository {
 
 
     /**
-     * Initialisation of the Network service Discovery Discovery Listener
+     * Initialisation of the Network countdownService Discovery Discovery Listener
      */
     private fun initializeDiscoveryListener() {
         discoveryListener = object : NsdManager.DiscoveryListener {
@@ -96,7 +96,7 @@ class PairRepository {
                     } else if (service.serviceName.equals(SERVICE_NAME)) {
                         println("NSD: Same machine")
                     } else {
-                        println("NSD: service added: $service")
+                        println("NSD: countdownService added: $service")
                         discoveredServices!!.postValue(arrayListOf(service))
                     }
                 }

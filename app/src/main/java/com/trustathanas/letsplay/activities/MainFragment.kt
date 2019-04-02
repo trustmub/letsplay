@@ -40,6 +40,8 @@ class MainFragment : BaseFragment() {
     var randomArrowInterval = 0
     val startGameObserver: MutableLiveData<Int> = MutableLiveData()
     lateinit var arrowValue: String
+    var totalScoreA = 0
+    var totalScoreb = 0
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_main, container, false)
@@ -63,7 +65,6 @@ class MainFragment : BaseFragment() {
 
         countDown.observe(this, Observer {
             view.tv_counter.text = initialCount.toString()
-//            displayInRandomSeconds()
             initialCount += it
 
             if (initialCount > 4) {
@@ -132,11 +133,18 @@ class MainFragment : BaseFragment() {
     private fun sendEvent(data: String) {
         println("Event: $data")
         println("Event arrowValue: $arrowValue")
-        tv_show_xy.text = if (data == arrowValue) "passed" else "Failed"
+        if (data == arrowValue) setScoreFor("Passed") else setScoreFor("Failed")
 
         socket?.let {
             it.emit("event", data)
         }
+    }
+
+    private fun setScoreFor(result: String) {
+        totalScoreA += if (result == "Passed") 1 else 0
+        initialiseArrowValue()
+        generateRandomSeconds()
+        startGame(null)
     }
 
     private fun initialiseSocketListener() {

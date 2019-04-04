@@ -185,22 +185,34 @@ class PairFragment : BaseFragment() {
             activity!!,
             arrayOf(
                 Manifest.permission.INTERNET,
-                Manifest.permission.ACCESS_NETWORK_STATE,
-                Manifest.permission.CHANGE_WIFI_MULTICAST_STATE
-            ),
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_ADMIN,
+                Manifest.permission.ACCESS_WIFI_STATE,
+                Manifest.permission.CHANGE_WIFI_STATE,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+                ),
             1
         )
     }
 
     private fun checkForPermission(): Boolean {
         val internet = ContextCompat.checkSelfPermission(activity!!.applicationContext, Manifest.permission.INTERNET)
-        val accessNetworkSate =
-            ContextCompat.checkSelfPermission(activity!!.applicationContext, Manifest.permission.ACCESS_NETWORK_STATE)
-        val multicastState = ContextCompat.checkSelfPermission(
-            activity!!.applicationContext, Manifest.permission.CHANGE_WIFI_MULTICAST_STATE
-        )
+        val bluetooth = ContextCompat.checkSelfPermission(activity!!.applicationContext, Manifest.permission.BLUETOOTH)
+        val bluetoothAdmin =
+            ContextCompat.checkSelfPermission(activity!!.applicationContext, Manifest.permission.BLUETOOTH_ADMIN)
+        val accessWifiSate =
+            ContextCompat.checkSelfPermission(activity!!.applicationContext, Manifest.permission.ACCESS_WIFI_STATE)
+        val changeWifiSate =
+            ContextCompat.checkSelfPermission(activity!!.applicationContext, Manifest.permission.CHANGE_WIFI_STATE)
+        val accessCoarseLocation =
+            ContextCompat.checkSelfPermission(activity!!.applicationContext, Manifest.permission.ACCESS_COARSE_LOCATION)
 
-        return internet == PackageManager.PERMISSION_GRANTED && accessNetworkSate == PackageManager.PERMISSION_GRANTED && multicastState == PackageManager.PERMISSION_GRANTED
+        return internet == PackageManager.PERMISSION_GRANTED &&
+                bluetooth == PackageManager.PERMISSION_GRANTED &&
+                bluetoothAdmin == PackageManager.PERMISSION_GRANTED &&
+                accessWifiSate == PackageManager.PERMISSION_GRANTED &&
+                changeWifiSate == PackageManager.PERMISSION_GRANTED &&
+                accessCoarseLocation == PackageManager.PERMISSION_GRANTED
     }
 
     private fun showDialog() {

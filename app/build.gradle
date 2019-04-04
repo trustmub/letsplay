@@ -6,7 +6,7 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "com.trustathanas.letsplay"
-        minSdkVersion 19
+        minSdkVersion 26
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
@@ -33,6 +33,10 @@ dependencies {
 
     // UI ripple animation library
     implementation 'com.skyfishjy.ripplebackground:library:1.0.1'
+
+    // google play services
+    implementation "com.google.android.gms:play-services-nearby:16.0.0"
+
 
     // ViewModel and LiveData
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.0.0'

@@ -25,9 +25,9 @@ class TiltRepository(
     private var accelerometerValues: MutableLiveData<AccelerometerModel>
 
     init {
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER_UNCALIBRATED)
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_UI)
         accelerometerValues = MutableLiveData()
     }
 

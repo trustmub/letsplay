@@ -4,6 +4,7 @@ import android.os.Build
 
 const val EXTRA_CONNECTION_DETAILS = "device_service_info"
 const val SERVICE_TYPE = "_http._tcp."
+const val SERVICE_ID = "com.trustathanas.letsplay"
 val SERVICE_NAME = getDeviceName()
 
 

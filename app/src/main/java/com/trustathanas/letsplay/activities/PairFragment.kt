@@ -21,6 +21,7 @@ import com.trustathanas.letsplay.models.ConnectionModel
 import com.trustathanas.letsplay.utilities.EXTRA_CONNECTION_DETAILS
 import com.trustathanas.letsplay.utilities.SERVICE_TYPE
 import com.trustathanas.letsplay.utilities.dialogs.DialogUtils
+import com.trustathanas.letsplay.viewModels.NearbyViewModel
 import com.trustathanas.letsplay.viewModels.PairViewModel
 import kotlinx.android.synthetic.main.fragment_pair.*
 import kotlinx.android.synthetic.main.fragment_pair.view.*
@@ -29,7 +30,8 @@ import org.koin.android.viewmodel.ext.android.viewModel
 
 class PairFragment : BaseFragment() {
 
-    private val pairViewModel: PairViewModel by viewModel()
+//    private val pairViewModel: PairViewModel by viewModel()
+    private val nearbyViewModel: NearbyViewModel by viewModel()
     var discoveredServices: ArrayList<NsdServiceInfo> = ArrayList()
     lateinit var discoveryListener: NsdManager.DiscoveryListener
     lateinit var registrationListener: NsdManager.RegistrationListener
@@ -43,10 +45,11 @@ class PairFragment : BaseFragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_pair, container, false)
 
+
         view.img_discovered_device_1.visibility = View.GONE
         view.tv_guest_name.visibility = View.GONE
-        discoveryListener = pairViewModel.getDiscoveryListener()
-        registrationListener = pairViewModel.getRegistrationListener()
+//        discoveryListener = pairViewModel.getDiscoveryListener()
+//        registrationListener = pairViewModel.getRegistrationListener()
 
         view.img_discovered_device_1.setOnClickListener {
             nsdManager.resolveService(serviceInfoExtra, resolveListener)
@@ -62,20 +65,22 @@ class PairFragment : BaseFragment() {
          * check if device has required permision before initialising NsdManager
          */
         if (checkForPermission()) {
-            registerService()
-            initializeDiscoveryService()
-            initialiseResolveListener()
+            nearbyViewModel.startAdvertisingService()
+            nearbyViewModel.startDiscoveryService()
+//            registerService()
+//            initializeDiscoveryService()
+//            initialiseResolveListener()
         } else {
             requestPermission()
         }
 
-        pairViewModel.getElementToRemove().observe(this, Observer {
-            discoveredServices.remove(it.element)
-            activity!!.runOnUiThread {
-                img_discovered_device_1.visibility = View.GONE
-                tv_guest_name.visibility = View.GONE
-            }
-        })
+//        pairViewModel.getElementToRemove().observe(this, Observer {
+//            discoveredServices.remove(it.element)
+//            activity!!.runOnUiThread {
+//                img_discovered_device_1.visibility = View.GONE
+//                tv_guest_name.visibility = View.GONE
+//            }
+//        })
 
         initialiseDiscoveryServicesObserver()
 
@@ -92,18 +97,18 @@ class PairFragment : BaseFragment() {
      *
      */
     private fun initialiseDiscoveryServicesObserver() {
-        pairViewModel.getDiscoveredServices()?.observe(this, Observer {
-            it.forEach {
-                println("NSD: discovered : ${it.serviceName}")
-                discoveredServices.add(it)
-                activity!!.runOnUiThread {
-                    img_discovered_device_1.visibility = View.VISIBLE
-                    tv_guest_name.visibility = View.VISIBLE
-                    tv_guest_name.text = it.serviceName
-                    serviceInfoExtra = it
-                }
-            }
-        })
+//        pairViewModel.getDiscoveredServices()?.observe(this, Observer {
+//            it.forEach {
+//                println("NSD: discovered : ${it.serviceName}")
+//                discoveredServices.add(it)
+//                activity!!.runOnUiThread {
+//                    img_discovered_device_1.visibility = View.VISIBLE
+//                    tv_guest_name.visibility = View.VISIBLE
+//                    tv_guest_name.text = it.serviceName
+//                    serviceInfoExtra = it
+//                }
+//            }
+//        })
     }
 
     /**
@@ -112,35 +117,35 @@ class PairFragment : BaseFragment() {
      * if there is a failed start up, a dialog alert to start the game in single player mode is presented
      */
     private fun initialiseListenerStateObservers(rippleBackground: RippleBackground) {
-        pairViewModel.getRegistrationState().observe(this, Observer {
-            if (it) {
-                tv_search_devices.text = getString(R.string.service_started)
-                rippleBackground.startRippleAnimation()
-            } else {
-                showDialogForSinglePlayer(
-                    getString(R.string.title_failed),
-                    getString(R.string.message_registration_failed)
-                )
-            }
-        })
-
-        pairViewModel.getDiscoveryState().observe(this, Observer {
-            if (!it) {
-                showDialogForSinglePlayer(
-                    getString(R.string.title_failed),
-                    getString(R.string.message_discovery_failed)
-                )
-            }
-        })
+//        pairViewModel.getRegistrationState().observe(this, Observer {
+//            if (it) {
+//                tv_search_devices.text = getString(R.string.service_started)
+//                rippleBackground.startRippleAnimation()
+//            } else {
+//                showDialogForSinglePlayer(
+//                    getString(R.string.title_failed),
+//                    getString(R.string.message_registration_failed)
+//                )
+//            }
+//        })
+//
+//        pairViewModel.getDiscoveryState().observe(this, Observer {
+//            if (!it) {
+//                showDialogForSinglePlayer(
+//                    getString(R.string.title_failed),
+//                    getString(R.string.message_discovery_failed)
+//                )
+//            }
+//        })
     }
 
     /**
      * register countdownService on local network
      */
     private fun registerService() {
-        val serviceInfo = pairViewModel.getServiceInfoForLocalNet()
-        nsdManager = activity!!.getSystemService(Context.NSD_SERVICE) as NsdManager
-        nsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener)
+//        val serviceInfo = pairViewModel.getServiceInfoForLocalNet()
+//        nsdManager = activity!!.getSystemService(Context.NSD_SERVICE) as NsdManager
+//        nsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener)
     }
 
     /**

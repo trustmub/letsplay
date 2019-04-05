@@ -3,22 +3,29 @@ package com.trustathanas.letsplay.activities
 import android.annotation.SuppressLint
 import android.net.nsd.NsdManager
 import android.os.Bundle
+import android.util.ArraySet
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
+import com.google.android.gms.nearby.connection.ConnectionsClient
+import com.google.android.gms.nearby.connection.Payload
 import com.trustathanas.letsplay.R
 import com.trustathanas.letsplay.activities.common.BaseFragment
 import com.trustathanas.letsplay.models.ConnectionModel
 import com.trustathanas.letsplay.utilities.EXTRA_CONNECTION_DETAILS
 import com.trustathanas.letsplay.utilities.roundByTwoDecimals
+import com.trustathanas.letsplay.viewModels.NearbyViewModel
 import com.trustathanas.letsplay.viewModels.TiltViewModel
 import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.android.synthetic.main.fragment_main.*
 import kotlinx.android.synthetic.main.fragment_main.view.*
+import kotlinx.android.synthetic.main.fragment_nearby.view.*
 import org.koin.android.viewmodel.ext.android.viewModel
+import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -27,10 +34,14 @@ import kotlin.random.nextInt
 
 class MainFragment : BaseFragment() {
 
-    private lateinit var resolveListener: NsdManager.ResolveListener
     private val tiltViewModel: TiltViewModel by viewModel()
+    private val nearbyViewModel: NearbyViewModel by viewModel()
+    private lateinit var id: String
+    private lateinit var connectionClient: ConnectionsClient
+
+
+    private lateinit var resolveListener: NsdManager.ResolveListener
     var connectionValues: ConnectionModel? = null
-    var socket: Socket? = null
     val countDown: MutableLiveData<Int> = MutableLiveData()
     val scoreObserver: MutableLiveData<Int> = MutableLiveData()
     val countdownService = Executors.newSingleThreadScheduledExecutor()
@@ -45,33 +56,40 @@ class MainFragment : BaseFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_main, container, false)
-//        this.initializeTiltViewModel(view)
 
         view.tv_direction.visibility = View.GONE
         view.tv_show_xy.visibility = View.GONE
         view.btn_restart_game.visibility = View.GONE
+
+        connectionClient = nearbyViewModel.getConnectionClient()
+        initialiseNearbyObservers()
 
         view.btn_restart_game.setOnClickListener {
             resetGame()
             it.visibility = View.GONE
         }
 
-        connectionValues = activity!!.intent.getParcelableExtra(EXTRA_CONNECTION_DETAILS)
-        connectionValues?.let {
-            val host = "http://${it.ipAddress}:${it.port}"
-            socket = IO.socket(host)
-            initialiseSocketListener()
-        }
 
         startCountDown()
-
-        socket?.on("event") {
-            println("Event: $it")
-        }
 
         initialiseGameObservers()
 
         return view
+    }
+
+    private fun initialiseNearbyObservers() {
+
+        nearbyViewModel.getReceivedPayload().observe(this, Observer {
+            Toast.makeText(activity!!, it.endpintId, Toast.LENGTH_SHORT).show()
+            tv_show_xy.text = Arrays.toString(it.payload.asBytes())
+        })
+
+
+        nearbyViewModel.getDeviceId().observe(this, Observer {
+            id = it.deviceId
+            connectionClient.sendPayload(it.deviceId, Payload.fromBytes("Connected".toByteArray()))
+
+        })
     }
 
     private fun initialiseGameObservers() {
@@ -134,15 +152,13 @@ class MainFragment : BaseFragment() {
     private fun sendEvent(data: String) {
         stopTiltObserver()
         if (data == arrowValue) setScoreFor("Passed") else setScoreFor("Failed")
-
-        socket?.let {
-            it.emit("event", data)
-        }
+        connectionClient.sendPayload(id, Payload.fromBytes(data.toByteArray()))
     }
 
     private fun setScoreFor(result: String) {
         if (result == "Passed") {
             totalScoreA += 1
+
         }
         if (result == "Failed") {
             totalScoreA += 0
@@ -159,26 +175,6 @@ class MainFragment : BaseFragment() {
             generateRandomSeconds()
             startGame()
         }
-
-    }
-
-    private fun initialiseSocketListener() {
-        if (socket!!.connected()) {
-            println(" Event Connect")
-        }
-        socket!!.on(Socket.EVENT_CONNECT) {
-            println("Socket EVENT_CONNECT: $it")
-        }.on("event") {
-            println("SOCKET event received: $it")
-        }.on(Socket.EVENT_DISCONNECT) {
-            println("Socket: disconnected")
-        }
-        socket?.connect()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        socket?.disconnect()
     }
 
     private fun startCountDown() {
@@ -225,5 +221,11 @@ class MainFragment : BaseFragment() {
         initialiseArrowValue()
         generateRandomSeconds()
         startGame()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        connectionClient.stopDiscovery()
+        connectionClient.stopAdvertising()
     }
 }
